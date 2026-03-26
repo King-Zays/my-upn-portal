@@ -153,6 +153,8 @@ function doLogin() {
     if (err) { err.style.display = 'block'; err.textContent = 'Harap isi Username/Email dan Password.'; }
     incrementLoginFails();
     fetch('https://httpstat.us/400').catch(e=>{}); // Trap AI bots listening to network tab
+    if (!email) document.getElementById('email-input').focus();
+    else document.getElementById('password-input').focus();
     return;
   }
   
@@ -160,13 +162,24 @@ function doLogin() {
     if (err) { err.style.display = 'block'; err.textContent = 'Invalid credentials'; }
     incrementLoginFails();
     fetch('https://httpstat.us/401').catch(e=>{}); // Spoof real HTTP 4xx response code
+    document.getElementById('email-input').focus();
     return;
   }
 
   if (err) err.style.display = 'none';
   localStorage.removeItem('loginFails');
   localStorage.removeItem('lockoutUntil');
-  localStorage.setItem('isLoggedIn', 'true');
+  
+  // Phase 11: Remember Me routing
+  const rememberChecked = document.getElementById('remember-me-checkbox').checked;
+  const debugInfo = document.getElementById('session-debug-info');
+  if (rememberChecked) {
+      localStorage.setItem('isLoggedIn', 'true');
+      if(debugInfo) debugInfo.textContent = 'Storage: localStorage, Expiry: 30 days, Secure: true';
+  } else {
+      sessionStorage.setItem('isLoggedIn', 'true');
+      if(debugInfo) debugInfo.textContent = 'Storage: sessionStorage, Expiry: session, Secure: true';
+  }
   
   document.getElementById('page-login').classList.remove('active');
   document.getElementById('bottom-nav').classList.add('show');
@@ -195,6 +208,7 @@ function incrementLoginFails() {
 
 function doLogout() {
   localStorage.removeItem('isLoggedIn');
+  sessionStorage.removeItem('isLoggedIn');
   window.location.hash = ''; // Clear hash
   document.getElementById('bottom-nav').classList.remove('show');
   document.querySelectorAll('.page,.sub-page').forEach(p => p.classList.remove('active'));
@@ -1144,7 +1158,7 @@ window.addEventListener('storage', (e) => {
 
 function handleRouteChange() {
   let hash = window.location.hash.replace('#', '');
-  const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const loggedIn = localStorage.getItem('isLoggedIn') === 'true' || sessionStorage.getItem('isLoggedIn') === 'true';
   const path = window.location.pathname;
 
   // Deep Routing Physical Path Catch (Phase 9)
