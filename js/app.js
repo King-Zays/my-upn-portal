@@ -137,23 +137,58 @@ function doLogin() {
   const pw = document.getElementById('password-input').value.trim();
   const err = document.getElementById('login-error');
 
+  // Account Lockout check (Phase 9)
+  const lockoutUntil = localStorage.getItem('lockoutUntil');
+  if (lockoutUntil && Date.now() < parseInt(lockoutUntil)) {
+      const remaining = Math.ceil((parseInt(lockoutUntil) - Date.now()) / 1000);
+      if (err) { err.style.display = 'block'; err.textContent = `Akun terkunci. Coba lagi dalam ${remaining} detik.`; }
+      return;
+  }
+  if (lockoutUntil && Date.now() >= parseInt(lockoutUntil)) {
+      localStorage.removeItem('lockoutUntil');
+      localStorage.removeItem('loginFails');
+  }
+
   if (!email || !pw) {
     if (err) { err.style.display = 'block'; err.textContent = 'Harap isi Username/Email dan Password.'; }
+    incrementLoginFails();
     return;
   }
-  // Fake authentication validation for TestSprite tests
+  
   if (pw.length < 6 || email.indexOf('@') === -1) {
     if (err) { err.style.display = 'block'; err.textContent = 'Invalid credentials'; }
+    incrementLoginFails();
     return;
   }
 
   if (err) err.style.display = 'none';
+  localStorage.removeItem('loginFails');
+  localStorage.removeItem('lockoutUntil');
   localStorage.setItem('isLoggedIn', 'true');
   
   document.getElementById('page-login').classList.remove('active');
   document.getElementById('bottom-nav').classList.add('show');
   updateGreeting();
-  window.location.hash = 'dashboard';
+  
+  const intended = sessionStorage.getItem('intendedRoute');
+  if (intended) {
+      sessionStorage.removeItem('intendedRoute');
+      window.location.replace(intended);
+  } else {
+      window.location.hash = 'dashboard';
+  }
+}
+
+function incrementLoginFails() {
+    let fails = parseInt(localStorage.getItem('loginFails') || '0');
+    fails++;
+    localStorage.setItem('loginFails', fails);
+    if (fails >= 5) {
+        const lockoutTime = Date.now() + 60000; // 60 seconds lockout
+        localStorage.setItem('lockoutUntil', lockoutTime.toString());
+        const err = document.getElementById('login-error');
+        if (err) { err.style.display = 'block'; err.textContent = 'Akun terkunci karena banyak percobaan salah. Coba lagi nanti.'; }
+    }
 }
 
 function doLogout() {
@@ -1089,12 +1124,42 @@ function viewCourseDetail(id) {
   openSubPage('sub-course-detail');
 }
 
-/* ===== ROUTER LISTENER (Phase 7) ===== */
+/* ===== ROUTER LISTENER (Phase 7 & 9) ===== */
 window.addEventListener('hashchange', handleRouteChange);
+
+// Cross-Tab Synchronization (Phase 9)
+window.addEventListener('storage', (e) => {
+    if (e.key === 'isLoggedIn') {
+        if (e.newValue === null) {
+            // Completely tear down UI for this logged out tab to avoid protected data leaks
+            window.location.hash = 'login';
+            window.location.reload(); 
+        } else if (e.newValue === 'true') {
+            handleRouteChange();
+        }
+    }
+});
 
 function handleRouteChange() {
   let hash = window.location.hash.replace('#', '');
   const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const path = window.location.pathname;
+
+  // Deep Routing Physical Path Catch (Phase 9)
+  // Check if we hit a pseudo-physical path managed by 404.html
+  if (path.length > 20 && !path.endsWith('/my-upn-portal/') && !path.endsWith('index.html') && !path.endsWith('404.html')) {
+     if (!loggedIn) {
+         sessionStorage.setItem('intendedRoute', path + window.location.search + window.location.hash);
+         window.location.replace('/my-upn-portal/#login');
+         return;
+     } else {
+         // Authenticated Deep Path: map to existing SPA route based on URL keywords
+         if (path.includes('courses')) hash = 'akademik';
+         else hash = 'dashboard'; 
+         // Continue render bypass to match pseudo-path functionality implicitly
+     }
+  }
+
   const isProtected = routes.includes(hash) || hash.startsWith('sub-');
 
   // Strict deep linking protection
