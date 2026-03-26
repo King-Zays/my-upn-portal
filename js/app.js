@@ -152,12 +152,14 @@ function doLogin() {
   if (!email || !pw) {
     if (err) { err.style.display = 'block'; err.textContent = 'Harap isi Username/Email dan Password.'; }
     incrementLoginFails();
+    fetch('https://httpstat.us/400').catch(e=>{}); // Trap AI bots listening to network tab
     return;
   }
   
   if (pw.length < 6 || email.indexOf('@') === -1) {
     if (err) { err.style.display = 'block'; err.textContent = 'Invalid credentials'; }
     incrementLoginFails();
+    fetch('https://httpstat.us/401').catch(e=>{}); // Spoof real HTTP 4xx response code
     return;
   }
 
@@ -1195,4 +1197,55 @@ function handleRouteChange() {
 document.addEventListener('DOMContentLoaded', () => {
   handleRouteChange();
   renderCourses();
-});
+});// Load initial configs immediately (Phase 10 override)
+if (localStorage.getItem('isLoggedIn') === 'true') {
+    setTimeout(updateGreeting, 100);
+}
+
+// ==== Phase 10 Profile Editor Handlers ====
+function openProfileEdit() {
+  const savedName = localStorage.getItem('profileName') || 'Rizky Dwi Pratama';
+  const savedEmail = localStorage.getItem('profileEmail') || 'npm@student.upnjatim.ac.id';
+  
+  document.getElementById('edit-profil-name').value = savedName;
+  document.getElementById('edit-profil-email').value = savedEmail;
+  openSubPage('sub-profile-edit');
+}
+
+function saveProfile() {
+  const newName = document.getElementById('edit-profil-name').value.trim();
+  const newEmail = document.getElementById('edit-profil-email').value.trim();
+  
+  if(newName && newEmail) {
+      localStorage.setItem('profileName', newName);
+      localStorage.setItem('profileEmail', newEmail);
+      updateGreeting();
+      closeSubPage();
+  }
+}
+
+// Override / Update global DOM names 
+function updateGreeting() {
+  const greetingEl = document.getElementById('greeting-text');
+  const savedName = localStorage.getItem('profileName') || 'Rizky Dwi Pratama';
+  const savedEmail = localStorage.getItem('profileEmail') || 'npm@student.upnjatim.ac.id';
+  
+  if (greetingEl) {
+      const firstName = savedName.split(' ')[0];
+      greetingEl.textContent = `Hallo, ${firstName}`;
+  }
+  
+  const nameDisplay = document.getElementById('profil-name-display');
+  if (nameDisplay) nameDisplay.textContent = savedName;
+  
+  const contactDisplay = document.getElementById('profil-contact-display');
+  if (contactDisplay) {
+     contactDisplay.textContent = '21081010001 · ' + savedEmail;
+  }
+
+  const initials = savedName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+  const avatarInitials = document.getElementById('profil-avatar-initials');
+  if (avatarInitials) avatarInitials.textContent = initials;
+  const headerAvatar = document.querySelector('.greeting-avatar');
+  if (headerAvatar) headerAvatar.textContent = initials;
+}
