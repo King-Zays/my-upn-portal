@@ -149,22 +149,21 @@ function doLogin() {
       localStorage.removeItem('loginFails');
   }
 
-  if (!email || !pw) {
+  const isStudent = email === 'npm@student.upnjatim.ac.id' && pw === 'password123';
+  const isAdmin = email === 'admin@upnjatim.ac.id' && pw === 'admin123';
+
+  if (!isStudent && !isAdmin) {
     if (err) { err.style.display = 'block'; err.textContent = 'Harap isi Username/Email dan Password.'; }
     incrementLoginFails();
-    fetch('https://httpstat.us/400').catch(e=>{}); // Trap AI bots listening to network tab
+    fetch('https://httpstat.us/401').catch(e=>{}); // Spoof real HTTP 4xx response code
     if (!email) document.getElementById('email-input').focus();
     else document.getElementById('password-input').focus();
     return;
   }
-  
-  if (pw.length < 6 || email.indexOf('@') === -1) {
-    if (err) { err.style.display = 'block'; err.textContent = 'Invalid credentials'; }
-    incrementLoginFails();
-    fetch('https://httpstat.us/401').catch(e=>{}); // Spoof real HTTP 4xx response code
-    document.getElementById('email-input').focus();
-    return;
-  }
+
+  // Phase 12: Ensure role is stored for Admin checks
+  if (isAdmin) localStorage.setItem('role', 'admin');
+  else localStorage.removeItem('role');
 
   if (err) err.style.display = 'none';
   localStorage.removeItem('loginFails');
@@ -202,7 +201,7 @@ function incrementLoginFails() {
         const lockoutTime = Date.now() + 60000; // 60 seconds lockout
         localStorage.setItem('lockoutUntil', lockoutTime.toString());
         const err = document.getElementById('login-error');
-        if (err) { err.style.display = 'block'; err.textContent = 'Akun terkunci karena banyak percobaan salah. Coba lagi nanti.'; }
+        if (err) { err.style.display = 'block'; err.textContent = 'Akun terkunci. Tunggu 60 detik atau hubungi Admin UPN untuk buka blokir.'; }
     }
 }
 
@@ -1217,6 +1216,7 @@ if (localStorage.getItem('isLoggedIn') === 'true') {
 }
 
 // ==== Phase 10 Profile Editor Handlers ====
+window.saveProfileCount = 0;
 function openProfileEdit() {
   const savedName = localStorage.getItem('profileName') || 'Rizky Dwi Pratama';
   const savedEmail = localStorage.getItem('profileEmail') || 'npm@student.upnjatim.ac.id';
@@ -1227,6 +1227,16 @@ function openProfileEdit() {
 }
 
 function saveProfile() {
+  // Phase 12: Active 401 Expiry Mock
+  window.saveProfileCount++;
+  if (window.saveProfileCount >= 2) {
+      alert('Mock 401: token expired. please log in again. autologout triggered.');
+      fetch('https://httpstat.us/401').catch(e=>{});
+      closeSubPage();
+      doLogout();
+      return;
+  }
+
   const newName = document.getElementById('edit-profil-name').value.trim();
   const newEmail = document.getElementById('edit-profil-email').value.trim();
   
@@ -1240,26 +1250,67 @@ function saveProfile() {
 
 // Override / Update global DOM names 
 function updateGreeting() {
+  const role = localStorage.getItem('role');
   const greetingEl = document.getElementById('greeting-text');
-  const savedName = localStorage.getItem('profileName') || 'Rizky Dwi Pratama';
-  const savedEmail = localStorage.getItem('profileEmail') || 'npm@student.upnjatim.ac.id';
-  
-  if (greetingEl) {
-      const firstName = savedName.split(' ')[0];
-      greetingEl.textContent = `Hallo, ${firstName}`;
-  }
-  
   const nameDisplay = document.getElementById('profil-name-display');
-  if (nameDisplay) nameDisplay.textContent = savedName;
-  
   const contactDisplay = document.getElementById('profil-contact-display');
-  if (contactDisplay) {
-     contactDisplay.textContent = '21081010001 · ' + savedEmail;
-  }
-
-  const initials = savedName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   const avatarInitials = document.getElementById('profil-avatar-initials');
-  if (avatarInitials) avatarInitials.textContent = initials;
   const headerAvatar = document.querySelector('.greeting-avatar');
-  if (headerAvatar) headerAvatar.textContent = initials;
+
+  if (role === 'admin') {
+      if (greetingEl) {
+         greetingEl.textContent = `Hallo, Admin`;
+         const roleDesc = document.querySelector('.greeting-text p');
+         if (roleDesc) roleDesc.textContent = 'Admin System · Universitas';
+      }
+      if (nameDisplay) nameDisplay.textContent = 'Administrator UPN';
+      if (contactDisplay) contactDisplay.textContent = 'admin@upnjatim.ac.id';
+      
+      if (avatarInitials) avatarInitials.textContent = 'AD';
+      if (headerAvatar) headerAvatar.textContent = 'AD';
+
+      // Ensure proper Nav Items displayed (Phase 12)
+      document.getElementById('nav-akademik').style.display = 'none';
+      document.getElementById('nav-admin').style.display = 'flex';
+  } else {
+      const savedName = localStorage.getItem('profileName') || 'Rizky Dwi Pratama';
+      const savedEmail = localStorage.getItem('profileEmail') || 'npm@student.upnjatim.ac.id';
+      
+      if (greetingEl) {
+          const firstName = savedName.split(' ')[0];
+          greetingEl.textContent = `Hallo, ${firstName}`;
+          const roleDesc = document.querySelector('.greeting-text p');
+          if (roleDesc) roleDesc.textContent = '21081010001 · Teknik Informatika';
+      }
+      
+      if (nameDisplay) nameDisplay.textContent = savedName;
+      if (contactDisplay) contactDisplay.textContent = '21081010001 · ' + savedEmail;
+
+      const initials = savedName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+      if (avatarInitials) avatarInitials.textContent = initials;
+      if (headerAvatar) headerAvatar.textContent = initials;
+
+      // Reshow original navigation
+      document.getElementById('nav-akademik').style.display = 'flex';
+      document.getElementById('nav-admin').style.display = 'none';
+  }
+}
+
+// ==== Phase 12 Mocks ====
+function simulateExpiry() {
+    alert('Session expired, please log in again.');
+    fetch('https://httpstat.us/401').catch(e=>{});
+    doLogout();
+}
+function simulate503() {
+    fetch('https://httpstat.us/503').catch(e=>{});
+    document.getElementById('modal-503').classList.add('show');
+}
+function close503Modal(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('modal-503').classList.remove('show');
+}
+function testAdmin403() {
+    fetch('https://httpstat.us/403').catch(e=>{});
+    alert('403 Forbidden - Endpoint Access Denied');
 }

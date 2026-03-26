@@ -430,6 +430,18 @@
 </div>
 </div>
 
+<!-- ===== ADMIN ===== -->
+<div id="page-admin" class="page">
+  <div class="app-header"><h1 style="color:var(--red-500)">Admin Panel</h1></div>
+  <div class="section" style="padding:20px;">
+    <div class="card" style="padding:20px; text-align:center; border:1px solid var(--red-1);">
+       <h3 style="color:var(--red-500)">Restricted Dashboard</h3>
+       <p style="font-size:12px; color:var(--gray-600); margin:12px 0;">Menu ini khusus administrator MyUPN.</p>
+       <button class="btn btn-danger" style="width:100%" onclick="testAdmin403()">Trigger Backend 403 API Mock</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== COURSE DETAIL SUB-PAGE ===== -->
 <div id="sub-course-detail" class="sub-page">
   <div class="sub-header">
@@ -475,6 +487,19 @@
 </div>
 </div>
 
+<!-- Modal 503 Network Error Mock -->
+<div class="modal-overlay" id="modal-503" onclick="close503Modal(event)">
+<div class="modal-sheet" onclick="event.stopPropagation()">
+<div class="modal-handle"></div>
+<h3>503 Service Unavailable</h3>
+<p>Gagal terhubung ke server MyUPN. Pastikan koneksi internet stabil dan coba lagi.</p>
+<div style="margin-top:20px; display:flex; gap:12px;">
+  <button class="btn btn-outline" style="flex:1" onclick="close503Modal(event)">Tutup</button>
+  <button class="btn btn-green" style="flex:1" onclick="close503Modal(event); alert('Simulated API Retry Fired');">Retry</button>
+</div>
+</div>
+</div>
+
 <!-- ===== BOTTOM NAV ===== -->
 <nav class="bottom-nav glass-panel" id="bottom-nav">
 <div class="nav-indicator" id="nav-indicator"></div>
@@ -482,6 +507,7 @@
 <div class="nav-item" data-page="layanan" onclick="navigateTo('layanan')"><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg><span class="nav-label">Layanan</span></div>
 <div class="nav-item" data-page="akademik" onclick="navigateTo('akademik')"><svg viewBox="0 0 24 24"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/></svg><span class="nav-label">Akademik</span></div>
 <div class="nav-item" data-page="profil" onclick="navigateTo('profil')"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span class="nav-label">Profil</span></div>
+<div class="nav-item" id="nav-admin" data-page="admin" onclick="navigateTo('admin')" style="display:none;"><svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12v4.7c0 4.67-3.13 8.89-7 10-3.87-1.11-7-5.33-7-10V6.3l7-3.12z"/></svg><span class="nav-label">Admin</span></div>
 
 <!-- Onboarding Nav Tooltip -->
 <div class="onboarding-tooltip" id="onboarding-nav">Ketuk untuk pindah halaman<div class="tooltip-arrow-down"></div></div>
@@ -492,9 +518,15 @@
 <!-- Viewport Environment Testing Simulator For AI QA Tools -->
 <div id="test-viewport-controls" style="position:fixed; bottom: 80px; right: 20px; z-index: 9999; display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
   <span style="background:var(--gray-800); color:white; font-size:10px; padding:4px 8px; border-radius:4px;">Responsive Toggle</span>
+  <button onclick="document.querySelector('.app').style.maxWidth='800px'; document.querySelector('.app').style.maxHeight='360px';" class="btn btn-dark" style="font-size:11px; padding:6px 12px; background:#4338ca;">Mob Land 800x360</button>
+  <button onclick="document.querySelector('.app').style.maxWidth='1024px'; document.querySelector('.app').style.maxHeight='768px';" class="btn btn-outline" style="font-size:11px; padding:6px 12px; background:white;">Tab Land 1024x768</button>
   <button onclick="document.querySelector('.app').style.maxWidth='360px'; document.querySelector('.app').style.maxHeight='800px';" class="btn btn-dark" style="font-size:11px; padding:6px 12px;">Mobile 360x800</button>
   <button onclick="document.querySelector('.app').style.maxWidth='768px'; document.querySelector('.app').style.maxHeight='1024px';" class="btn btn-outline" style="font-size:11px; padding:6px 12px; background:white;">Tablet 768x1024</button>
   <button onclick="document.querySelector('.app').style.maxWidth='100vw'; document.querySelector('.app').style.maxHeight='100vh';" class="btn btn-green" style="font-size:11px; padding:6px 12px;">Reset Desktop</button>
+  
+  <span style="background:var(--gray-800); color:white; font-size:10px; padding:4px 8px; border-radius:4px; margin-top:8px;">Network Mock</span>
+  <button onclick="simulateExpiry()" class="btn btn-danger" style="font-size:11px; padding:6px 12px;">Simulate 401 Expiry</button>
+  <button onclick="simulate503()" class="btn btn-danger" style="font-size:11px; padding:6px 12px;">Simulate 503 Retry</button>
 </div>
 
 </nav>
