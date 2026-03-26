@@ -987,6 +987,108 @@ if (appContainer && spinner) {
   });
 }
 
+/* ===== COURSE MOCK DATA & PAGINATION (Phase 8) ===== */
+const courseData = [
+  { id: 'c1', name: 'Basis Data', code: 'IF1234', sks: 3, term: '4', dept: 'if', lecturer: 'Bu Sari Dewi', grade: 'A', desc: 'Mempelajari relasional database, SQL, dan normalisasi.' },
+  { id: 'c2', name: 'Algoritma & Pemrograman', code: 'IF1235', sks: 3, term: '4', dept: 'if', lecturer: 'Pak Budi', grade: 'A-', desc: 'Dasar-dasar logika pemrograman dan struktur data.' },
+  { id: 'c3', name: 'Sistem Operasi', code: 'IF1236', sks: 3, term: '4', dept: 'if', lecturer: 'Pak Andi', grade: 'B+', desc: 'Manajemen memori, proses, dan file system.' },
+  { id: 'c4', name: 'Manajemen Proyek TI', code: 'SI4421', sks: 2, term: '4', dept: 'si', lecturer: 'Bu Rina', grade: 'A', desc: 'Metodologi Agile, Scrum, dan manajemen waktu proyek.' },
+  { id: 'c5', name: 'Jaringan Komputer', code: 'IF1122', sks: 3, term: '3', dept: 'if', lecturer: 'Pak Joko', grade: 'B', desc: 'Topologi, OSI layer, dan routing jaringan.' },
+  { id: 'c6', name: 'Kalkulus II', code: 'MA1002', sks: 3, term: '3', dept: 'if', lecturer: 'Bu Siti', grade: 'C+', desc: 'Integral, deret, dan persamaan diferensial dasar.' },
+  { id: 'c7', name: 'Struktur Data', code: 'IF1023', sks: 3, term: '3', dept: 'if', lecturer: 'Pak Budi', grade: 'A-', desc: 'Trees, Graphs, Hash Tables, dan manipulasi data lanjut.' },
+  { id: 'c8', name: 'Statistika Dasar', code: 'MA1005', sks: 2, term: '3', dept: 'si', lecturer: 'Bu Tina', grade: 'B+', desc: 'Distribusi probabilitas dan pengujian hipotesis.' }
+];
+
+let currentPage = 1;
+const ITEMS_PER_PAGE = 3;
+
+function renderCourses() {
+  const searchInput = document.getElementById('course-search');
+  if(!searchInput) return;
+  
+  const searchQuery = searchInput.value.toLowerCase();
+  const termFilter = document.getElementById('filter-term').value;
+  const deptFilter = document.getElementById('filter-dept').value;
+  
+  const filtered = courseData.filter(c => {
+    const matchSearch = c.name.toLowerCase().includes(searchQuery) || c.code.toLowerCase().includes(searchQuery);
+    const matchTerm = termFilter === 'all' || c.term === termFilter;
+    const matchDept = deptFilter === 'all' || c.dept === deptFilter;
+    return matchSearch && matchTerm && matchDept;
+  });
+  
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const pageData = filtered.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+  
+  const listEl = document.getElementById('mk-list');
+  listEl.innerHTML = '';
+  
+  if (pageData.length === 0) {
+    listEl.innerHTML = `<div class="empty-state">
+      <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></div>
+      <h4>Tidak Ada Mata Kuliah</h4>
+      <p style="font-size:13px; color:var(--gray-500)">Coba ubah kata kunci atau filter pencarian.</p>
+    </div>`;
+  } else {
+    pageData.forEach(c => {
+      // using backticks string injection without bad escapes
+      listEl.innerHTML += `<div class="card" style="padding:16px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="viewCourseDetail('${c.id}')">
+          <div>
+            <h4 style="font-weight:600; color:var(--gray-800); margin-bottom:4px; font-size:15px;" class="course-badge">${c.name}</h4>
+            <p style="font-size:12px; color:var(--gray-500)">${c.code} · ${c.sks} SKS</p>
+          </div>
+          <span class="chip green course-grade-badge" style="font-weight:700;">${c.grade}</span>
+        </div>`;
+    });
+  }
+  
+  renderPagination(totalPages);
+}
+
+function renderPagination(total) {
+  const pag = document.getElementById('course-pagination');
+  if(!pag) return;
+  pag.innerHTML = '';
+  if (total <= 1) return;
+  
+  const prev = document.createElement('button');
+  prev.className = 'page-btn ' + (currentPage === 1 ? 'disabled' : '');
+  prev.innerHTML = '&laquo;';
+  prev.onclick = () => { if (currentPage > 1) { currentPage--; renderCourses(); } };
+  pag.appendChild(prev);
+  
+  for(let i=1; i<=total; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn ' + (currentPage === i ? 'active' : '');
+    btn.textContent = i;
+    btn.onclick = () => { currentPage = i; renderCourses(); };
+    pag.appendChild(btn);
+  }
+  
+  const next = document.createElement('button');
+  next.className = 'page-btn ' + (currentPage === total ? 'disabled' : '');
+  next.innerHTML = '&raquo;';
+  next.onclick = () => { if (currentPage < total) { currentPage++; renderCourses(); } };
+  pag.appendChild(next);
+}
+
+function viewCourseDetail(id) {
+  const c = courseData.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('cd-course-name').textContent = c.name;
+  document.getElementById('cd-course-code').textContent = c.code;
+  document.getElementById('cd-sks').textContent = c.sks;
+  document.getElementById('cd-term').textContent = c.term;
+  document.getElementById('cd-lecturer').textContent = c.lecturer;
+  document.getElementById('cd-desc').textContent = c.desc;
+  document.getElementById('cd-grade').textContent = c.grade;
+  
+  openSubPage('sub-course-detail');
+}
+
 /* ===== ROUTER LISTENER (Phase 7) ===== */
 window.addEventListener('hashchange', handleRouteChange);
 
@@ -1027,4 +1129,5 @@ function handleRouteChange() {
 // Initial route check on page load to handle reload states
 document.addEventListener('DOMContentLoaded', () => {
   handleRouteChange();
+  renderCourses();
 });
