@@ -1,10 +1,13 @@
 /* =============================================
    MY UPN — Application Logic
+   Dengan View Transitions, Count-Up, Ripple
    ============================================= */
 
 /* ===== STATE ===== */
 let currentSub = null;
 let previousPage = null;
+let countUpDone = false;
+let transkripData = null; // Untuk Canvas chart
 
 /* ===== THEME TOGGLE ===== */
 function initTheme() {
@@ -34,26 +37,49 @@ function updateThemeIcon(theme) {
   });
 }
 
+/* ===== VIEW TRANSITIONS HELPER ===== */
+function withTransition(callback) {
+  if (document.startViewTransition) {
+    document.startViewTransition(callback);
+  } else {
+    callback();
+  }
+}
+
 /* ===== SPA NAVIGATION ===== */
 const routes = ['dashboard', 'layanan', 'akademik', 'profil'];
 
-function navigateTo(page) {
-  if (currentSub) closeSubPage();
+// Fungsi internal navigasi (tanpa transition wrapper)
+function _doNavigation(page) {
+  if (currentSub) _doCloseSub();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  
+
   const navContainer = document.getElementById('bottom-nav');
   document.querySelectorAll('.nav-item').forEach((n, idx) => {
     const isActive = n.dataset.page === page;
     n.classList.toggle('active', isActive);
     if (isActive && navContainer) {
       navContainer.dataset.active = idx;
+      // Tambah bounce animation saat nav aktif
+      n.classList.add('bouncing');
+      setTimeout(() => n.classList.remove('bouncing'), 600);
     }
   });
 
   window.scrollTo(0, 0);
-  // Re-observe new page elements for scroll reveal
+
+  // Jalankan count-up saat pertama kali masuk dashboard
+  if (page === 'dashboard' && !countUpDone) {
+    requestAnimationFrame(() => runCountUpAnimations());
+  }
+
   requestAnimationFrame(() => observeReveals());
+}
+
+// Navigasi dengan View Transition (fade)
+function navigateTo(page) {
+  withTransition(() => _doNavigation(page));
 }
 
 function updateNavIndicator() {
@@ -61,12 +87,13 @@ function updateNavIndicator() {
   const navContainer = document.getElementById('bottom-nav');
   if (activeItem && navContainer) {
     const idx = routes.indexOf(activeItem.dataset.page);
-    if(idx !== -1) navContainer.dataset.active = idx;
+    if (idx !== -1) navContainer.dataset.active = idx;
   }
 }
 
 /* ===== SUB-PAGE NAVIGATION ===== */
-function openSubPage(id) {
+// Fungsi internal buka sub-page
+function _doOpenSub(id) {
   previousPage = document.querySelector('.page.active');
   if (previousPage) previousPage.classList.remove('active');
   document.getElementById('bottom-nav').classList.remove('show');
@@ -74,15 +101,30 @@ function openSubPage(id) {
   currentSub = id;
   window.scrollTo(0, 0);
   requestAnimationFrame(() => observeReveals());
+  // Draw Canvas chart ketika sub-transkrip dibuka
+  if (id === 'sub-transkrip' && transkripData) {
+    setTimeout(() => drawIPSChart(transkripData), 100);
+  }
 }
 
-function closeSubPage() {
+// Fungsi internal tutup sub-page
+function _doCloseSub() {
   if (currentSub) document.getElementById(currentSub).classList.remove('active');
   currentSub = null;
   if (previousPage) {
     previousPage.classList.add('active');
     document.getElementById('bottom-nav').classList.add('show');
   }
+}
+
+// Buka sub-page dengan View Transition (slide)
+function openSubPage(id) {
+  withTransition(() => _doOpenSub(id));
+}
+
+// Tutup sub-page dengan View Transition
+function closeSubPage() {
+  withTransition(() => _doCloseSub());
 }
 
 /* ===== LOGIN / LOGOUT ===== */
@@ -101,6 +143,7 @@ function doLogout() {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector('[data-page="dashboard"]').classList.add('active');
   currentSub = null;
+  countUpDone = false; // Reset agar count-up jalan lagi saat login
   updateNavIndicator();
 }
 
@@ -118,8 +161,35 @@ function togglePassword() {
 }
 
 /* ===== HELP MODAL ===== */
-function openHelp() { document.getElementById('modal-help').classList.add('show'); }
-function closeHelp(e) { if (e.target === e.currentTarget) document.getElementById('modal-help').classList.remove('show'); }
+/* ===== HELP MODAL & TOOLTIP ===== */
+let tooltipTimer;
+function showTooltip() {
+  const tt = document.getElementById('tooltip-pw');
+  if (tt) {
+    tt.classList.add('show');
+    clearTimeout(tooltipTimer);
+    tooltipTimer = setTimeout(() => tt.classList.remove('show'), 8000); // dismiss after 8s for onboarding
+  }
+}
+
+function openHelp(tabId = 'reset') { 
+  document.getElementById('modal-help').classList.add('show');
+  switchHelpTab(tabId);
+}
+function closeHelp(e) { 
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('modal-help').classList.remove('show'); 
+}
+function switchHelpTab(tabId) {
+  document.querySelectorAll('.help-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.help-content').forEach(c => c.classList.remove('active'));
+  
+  const btn = document.querySelector(`.help-tab-btn[onclick="switchHelpTab('${tabId}')"]`);
+  const content = document.getElementById(`help-${tabId}`);
+  
+  if (btn) btn.classList.add('active');
+  if (content) content.classList.add('active');
+}
 
 /* ===== DYNAMIC GREETING ===== */
 function updateGreeting() {
@@ -133,7 +203,73 @@ function updateGreeting() {
 }
 
 /* =============================================
+   COUNT-UP ANIMATION — Angka naik dari 0
+   ============================================= */
+function animateCountUp(element, target, duration = 1200) {
+  const isDecimal = String(target).includes('.');
+  const isPercent = element.textContent.includes('%');
+  const startTime = performance.now();
+
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease-out cubic untuk gerakan natural
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = target * eased;
+
+    if (isPercent) {
+      element.textContent = Math.round(current) + '%';
+    } else if (isDecimal) {
+      element.textContent = current.toFixed(2);
+    } else {
+      element.textContent = Math.round(current);
+    }
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+
+  requestAnimationFrame(update);
+}
+
+function runCountUpAnimations() {
+  if (countUpDone) return;
+  countUpDone = true;
+
+  const dashVals = document.querySelectorAll('#page-dashboard .dash-val');
+  dashVals.forEach(el => {
+    const text = el.textContent.trim();
+    const numMatch = text.match(/^([\d.]+)(%?)$/);
+    if (numMatch) {
+      const target = parseFloat(numMatch[1]);
+      animateCountUp(el, target, 1400);
+    }
+    // Skip non-numeric values seperti "Aktif" dan "Sem 4"
+  });
+}
+
+/* =============================================
+   RIPPLE EFFECT — Efek gelombang saat klik
+   ============================================= */
+function createRipple(event, element) {
+  // Hapus ripple lama jika ada
+  element.querySelectorAll('.ripple').forEach(r => r.remove());
+
+  const ripple = document.createElement('span');
+  ripple.className = 'ripple';
+  const rect = element.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  ripple.style.width = ripple.style.height = size + 'px';
+  ripple.style.left = (event.clientX - rect.left - size / 2) + 'px';
+  ripple.style.top = (event.clientY - rect.top - size / 2) + 'px';
+  element.appendChild(ripple);
+  ripple.addEventListener('animationend', () => ripple.remove());
+}
+
+/* =============================================
    INTERSECTION OBSERVER — Scroll Reveal
+   Dengan staggered delay per item
    ============================================= */
 let revealObserver;
 
@@ -149,8 +285,20 @@ function initRevealObserver() {
 }
 
 function observeReveals() {
+  // Kelompokkan reveal elements per parent untuk stagger yang natural
+  const parents = new Map();
   document.querySelectorAll('.reveal:not(.visible)').forEach(el => {
-    revealObserver.observe(el);
+    const parent = el.parentElement;
+    if (!parents.has(parent)) parents.set(parent, []);
+    parents.get(parent).push(el);
+  });
+
+  parents.forEach((children) => {
+    children.forEach((el, index) => {
+      // Staggered delay 80ms per item dalam satu parent
+      el.style.transitionDelay = `${index * 80}ms`;
+      revealObserver.observe(el);
+    });
   });
 }
 
@@ -159,43 +307,193 @@ function observeReveals() {
    ============================================= */
 
 /* ----- Tasks ----- */
+/* ----- Tugas (ILMU2) ----- */
+let tugasTimer = null;
+const tugasData = [
+  { id: 1, course: 'Basis Data', title: 'Tugas Besar E-R Diagram', desc: 'Buatlah ERD lengkap untuk sistem reservasi hotel dengan entitas yang telah didiskusikan.', deadlineOffset: 2 * 60 * 60 * 1000, status: 'pending' },
+  { id: 2, course: 'Pemrograman Web', title: 'Mini Project: Landing Page', desc: 'Selesaikan landing page responsif menggunakan HTML & CSS murni tanpa framework.', deadlineOffset: 24 * 60 * 60 * 1000, status: 'pending' },
+  { id: 3, course: 'Jaringan Komputer', title: 'Simulasi Cisco Packet Tracer', desc: 'Desain topologi star dan konfigurasikan IP static.', deadlineOffset: 3 * 24 * 60 * 60 * 1000, status: 'pending' },
+  { id: 4, course: 'Sistem Operasi', title: 'Review Jurnal Deadlock', desc: 'Cari 1 jurnal internasional tentang deadlock avoidance & buat rangkuman.', deadlineOffset: -24 * 60 * 60 * 1000, status: 'done' },
+  { id: 5, course: 'Matematika Diskrit', title: 'Latihan Graf', desc: 'Kerjakan soal no 1-10 dari buku cetak bab Graf.', deadlineOffset: 5 * 24 * 60 * 60 * 1000, status: 'pending' }
+];
+
+// Initialize true deadlines dynamically based on runtime
+tugasData.forEach(t => t.deadline = new Date(Date.now() + t.deadlineOffset));
+
+function calculateCountdown(deadlineDate) {
+  const diff = deadlineDate - new Date();
+  if (diff < 0) return { text: 'Sudah lewat', type: 'danger', urgent: false };
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  if (days > 0) return { text: `${days} hari lagi`, type: 'safe', urgent: false };
+  if (hours > 0) return { text: `${hours} jam lagi`, type: 'warning', urgent: true };
+  const mins = Math.floor(diff / (1000 * 60));
+  return { text: `${mins} menit lagi`, type: 'danger', urgent: true };
+}
+
+function filterTugas(filterType) {
+  const btns = document.querySelectorAll('.tugas-filter .btn');
+  if (btns.length && event && event.target) {
+    btns.forEach(b => {
+      b.className = 'btn btn-outline';
+      b.style.padding = '6px 14px'; b.style.fontSize = '12px'; b.style.borderRadius = '16px'; b.style.whiteSpace = 'nowrap';
+    });
+    event.target.className = 'btn btn-dark';
+  }
+  renderTugasTimeline(filterType);
+}
+
+function renderTugasTimeline(filter = 'all') {
+  const container = document.getElementById('tugas-timeline');
+  if (!container) return;
+  
+  const urgent = [];
+  const upcoming = [];
+  const done = [];
+  
+  tugasData.forEach(t => {
+    if (filter === 'pending' && t.status === 'done') return;
+    const cd = calculateCountdown(t.deadline);
+    if (filter === 'urgent' && !cd.urgent && t.status !== 'done') return; // urgent filter hides non-urgent pending
+    if (filter === 'urgent' && t.status === 'done') return;
+    
+    const cardHTML = `
+      <div class="tugas-card reveal">
+        <div class="tugas-header">
+          <span class="tugas-course">${t.course}</span>
+          <span class="tugas-time">${t.deadline.toLocaleDateString('id-ID', {day:'numeric', month:'short'})} ${t.deadline.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</span>
+        </div>
+        <div class="tugas-title">${t.title}</div>
+        <div class="tugas-desc">${t.desc}</div>
+        <div class="tugas-footer">
+          <div class="countdown-badge ${cd.type}"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/><path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg> ${cd.text}</div>
+          ${t.status === 'done' ? '<span style="color:var(--green-4); font-size:12px; font-weight:600">Selesai ✓</span>' : `<span class="tugas-action" onclick="alert('Menuju ILMU2 untuk submit tugas...')">Kerjakan <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></span>`}
+        </div>
+      </div>
+    `;
+
+    if (t.status === 'done') done.push(cardHTML);
+    else if (cd.urgent) urgent.push(cardHTML);
+    else upcoming.push(cardHTML);
+  });
+
+  let html = '';
+  if (urgent.length > 0) {
+    html += `<div class="tugas-group urgent"><div class="tugas-group-title" style="color:var(--red-1)">Perlu Perhatian (Urgent)</div>${urgent.join('')}</div>`;
+  }
+  if (upcoming.length > 0) {
+    html += `<div class="tugas-group"><div class="tugas-group-title">Akan Datang</div>${upcoming.join('')}</div>`;
+  }
+  if (done.length > 0 && filter === 'all') {
+    html += `<div class="tugas-group"><div class="tugas-group-title">Selesai</div>${done.join('')}</div>`;
+  }
+  
+  if (html === '') html = '<div style="text-align:center; padding:30px 20px;"><p style="color:var(--gray-400); font-size:14px; font-family:Sora">Tidak ada tugas terpilih</p></div>';
+  
+  container.innerHTML = html;
+  requestAnimationFrame(() => observeReveals());
+}
+
 function renderTasks() {
-  const tasks = [
-    { title: 'Tugas Basis Data', desc: 'Coding web dengan bahasa C++...', due: '28/03/2026', status: 'Belum' },
-    { title: 'Tugas PWeb', desc: 'Coding web dengan bahasa HTML CSS JS...', due: '01/04/2026', status: 'Belum' },
-    { title: 'Tugas Algo', desc: 'Tidak ada tugas. Selamat istirahat!', due: '-', status: 'Selesai' }
-  ];
   const c = document.getElementById('task-scroll');
   if (!c) return;
-  c.innerHTML = '';
-  tasks.forEach(t => {
-    const el = document.createElement('div');
-    el.className = 'task-card';
-    el.onclick = () => alert(t.title + ': ' + t.desc);
-    el.innerHTML = `<h4>${t.title}</h4><p>${t.desc}</p><div class="task-meta">${t.status === 'Selesai' ? '<span style="color:var(--green-3)">Selesai</span>' : '<span class="task-due">Deadline: ' + t.due + '</span>'}</div>`;
-    c.appendChild(el);
-  });
+
+  // Render Skeleton
+  c.innerHTML = `
+    <div class="task-card skeleton" style="height: 70px; margin-bottom: 10px;"></div>
+    <div class="task-card skeleton" style="height: 70px;"></div>
+  `;
+  
+  const tick = () => {
+    const pending = tugasData.filter(t => t.status !== 'done').sort((a,b) => a.deadline - b.deadline);
+    let html = '';
+    let hasUrgent = false;
+
+    if (pending.length === 0) {
+      html = `
+        <div class="empty-state" style="width:100%">
+          <div class="empty-icon"><svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>
+          <h4>Hore!</h4>
+          <p>Tidak ada tugas tertunda. Selamat beristirahat!</p>
+        </div>
+      `;
+    } else {
+      pending.forEach(t => {
+        const cd = calculateCountdown(t.deadline);
+        if (cd.urgent) hasUrgent = true;
+        
+        html += `<div class="task-card" onclick="openSubPage('sub-tugas')">
+          <h4>${t.title}</h4><p>${t.course}</p>
+          <div class="task-meta" style="margin-top:8px">
+            <span class="countdown-badge ${cd.type}" style="padding:4px 8px; font-size:10px">${cd.text}</span>
+          </div>
+        </div>`;
+      });
+    }
+    c.innerHTML = html;
+
+    // Update nav badge in Beranda
+    const badge = document.getElementById('nav-badge-tugas');
+    if (badge) badge.style.display = hasUrgent ? 'block' : 'none';
+  };
+
+  tick();
+  
+  // Real-time countdown updates
+  if (tugasTimer) clearInterval(tugasTimer);
+  tugasTimer = setInterval(() => {
+    tick();
+    if (currentSub === 'sub-tugas') {
+      const activeBtn = document.querySelector('.tugas-filter .btn-dark');
+      const fType = activeBtn ? (activeBtn.textContent.includes('Belum') ? 'pending' : (activeBtn.textContent.includes('Dekat') ? 'urgent' : 'all')) : 'all';
+      renderTugasTimeline(fType);
+    }
+  }, 60000); // 1-minute interval
+  
+  // Initial render of timeline
+  setTimeout(() => {
+    tick();
+    renderTugasTimeline('all');
+  }, 800); // Delay for skeleton duration
 }
 
 /* ----- Announcements ----- */
 function renderAnnouncements() {
-  const anns = [
-    { date: '20 Maret 2026', title: 'Pembayaran UKT dimulai dari tanggal...', desc: 'Selengkapnya' },
-    { date: '18 Maret 2026', title: 'Batas pengisian KRS Semester 5', desc: '31 Juli 2026 — Pastikan KRS sudah disetujui' }
-  ];
   const c = document.getElementById('ann-scroll');
   if (!c) return;
-  c.innerHTML = '';
-  anns.forEach(a => {
-    const el = document.createElement('div');
-    el.className = 'ann-card';
-    el.onclick = () => alert(a.title);
-    el.innerHTML = `<div class="ann-date">${a.date}</div><h4>${a.title}</h4><p>${a.desc}</p>`;
-    c.appendChild(el);
-  });
+
+  // Skeleton
+  c.innerHTML = `
+    <div class="ann-card skeleton" style="min-width: 260px; height: 90px; margin-right:12px;"></div>
+    <div class="ann-card skeleton" style="min-width: 260px; height: 90px;"></div>
+  `;
+
+  setTimeout(() => {
+    const anns = [
+      { date: '20 Maret 2026', title: 'Pembayaran UKT dimulai dari tanggal...', desc: 'Selengkapnya' },
+      { date: '18 Maret 2026', title: 'Batas pengisian KRS Semester 5', desc: '31 Juli 2026 — Pastikan KRS sudah disetujui' }
+    ];
+    
+    if (anns.length === 0) {
+      c.innerHTML = `
+        <div class="empty-state" style="width:100%">
+          <div class="empty-icon"><svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg></div>
+          <h4>Belum Ada Pengumuman</h4>
+          <p>Informasi dari universitas akan muncul di sini.</p>
+        </div>
+      `;
+      return;
+    }
+
+    let html = '';
+    anns.forEach(a => {
+      html += `<div class="ann-card reveal" onclick="alert('${a.title}')"><div class="ann-date">${a.date}</div><h4>${a.title}</h4><p>${a.desc}</p></div>`;
+    });
+    c.innerHTML = html;
+  }, 800);
 }
 
-/* ----- Services Grid ----- */
+/* ----- Services Grid (dengan staggered entrance) ----- */
 function renderServices() {
   const svcs = [
     { id: 'sub-jadwal', title: 'Jadwal Kelas', badge: 'Hari ini 2', badgeColor: 'var(--green-1)', badgeText: 'var(--green-4)', bg: 'var(--green-1)', fill: 'var(--green-3)', icon: '<path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/>' },
@@ -211,9 +509,11 @@ function renderServices() {
   if (!grid) return;
   grid.innerHTML = '<div class="service-grid" id="svc-grid"></div>';
   const g = document.getElementById('svc-grid');
-  svcs.forEach(s => {
+  svcs.forEach((s, index) => {
     const el = document.createElement('div');
     el.className = 'service-card reveal';
+    // Staggered entrance delay — setiap kartu muncul 80ms setelah sebelumnya
+    el.style.transitionDelay = `${index * 80}ms`;
     el.onclick = () => s.id ? openSubPage(s.id) : alert(s.title + ' — Segera hadir');
     let badgeHtml = '';
     if (s.badge) badgeHtml = `<span class="svc-badge" style="background:${s.badgeColor || 'var(--green-1)'};color:${s.badgeText || 'var(--green-4)'}">${s.badge}</span>`;
@@ -285,7 +585,7 @@ function renderKehadiran() {
   if (!c) return;
   let html = '<div class="card" style="padding:16px">';
   data.forEach(d => {
-    const color = d.pct >= 90 ? 'var(--green-3)' : d.pct >= 80 ? '#eab308' : 'var(--red-500)';
+    const color = d.pct >= 90 ? 'var(--green-3)' : d.pct >= 80 ? '#eab308' : 'var(--red-3)';
     html += `<div class="att-item"><div class="att-top"><h4>${d.mk}</h4><span style="color:${color}">${d.pct}%</span></div><div class="att-bar"><div class="att-fill" style="width:${d.pct}%;background:${color}"></div></div><div class="att-meta">${d.code} · Kehadiran ${d.hadir}</div></div>`;
   });
   html += '</div>';
@@ -309,6 +609,67 @@ function renderMKTersedia() {
   c.innerHTML = html;
 }
 
+/* ----- Sub: LP3M ----- */
+function closeLP3MAlert(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('modal-lp3m').classList.remove('show');
+}
+
+function renderLP3M() {
+  const data = [
+    { type: 'Dosen Wali', name: 'Dr. Ir. Wahyu Nugroho, M.T.', status: 'done' },
+    { type: 'Mata Kuliah', name: 'Basis Data', dosen: 'Bu Sari Dewi', status: 'done' },
+    { type: 'Mata Kuliah', name: 'Algoritma & Pemrograman', dosen: 'Pak Budi', status: 'done' },
+    { type: 'Mata Kuliah', name: 'Sistem Operasi', dosen: 'Pak Ahmad Fauzi', status: 'done' },
+    { type: 'Mata Kuliah', name: 'Jaringan Komputer', dosen: 'Bu Rina', status: 'pending' },
+    { type: 'Mata Kuliah', name: 'Pemrograman Web', dosen: 'Pak Denny', status: 'pending' },
+    { type: 'Mata Kuliah', name: 'Matematika Diskrit', dosen: 'Pak Heru', status: 'pending' },
+    { type: 'Mata Kuliah', name: 'Analisis Perancangan SI', dosen: 'Bu Mega', status: 'pending' }
+  ];
+
+  let completed = 0;
+  let html = '<div class="section-title">Daftar Evaluasi</div>';
+  
+  data.forEach((d, idx) => {
+    if (d.status === 'done') completed++;
+    
+    // Staggered reveal
+    html += `<div class="lp3m-item reveal" style="transition-delay:${idx * 40}ms" onclick="document.getElementById('modal-lp3m').classList.add('show')">`;
+    html += `<div class="lp3m-i-left"><h4>${d.type}</h4><p>${d.name}${d.dosen ? ' · ' + d.dosen : ''}</p></div>`;
+    html += `<div class="lp3m-i-right"><span class="lp3m-status ${d.status}">${d.status === 'done' ? 'Selesai' : 'Belum'}</span></div>`;
+    html += `</div>`;
+  });
+
+  const list = document.getElementById('lp3m-list');
+  if (list) list.innerHTML = html;
+
+  const pct = Math.round((completed / data.length) * 100);
+  
+  // Update Sub-page Progress
+  const pText = document.getElementById('lp3m-p-text');
+  const pFill = document.getElementById('lp3m-p-fill');
+  if (pText) pText.textContent = `${completed}/${data.length}`;
+  if (pFill) setTimeout(() => pFill.style.width = pct + '%', 300);
+
+  // Update Banner state
+  const bTitle = document.getElementById('lp3m-b-title');
+  const bDesc = document.getElementById('lp3m-b-desc');
+  const banner = document.getElementById('lp3m-banner');
+  if (pct === 100) {
+    if (bTitle) bTitle.textContent = 'Kuisioner Selesai 🎉';
+    if (bDesc) bDesc.textContent = 'Kartu ETS kini dapat diunduh';
+    if (banner) banner.style.background = 'linear-gradient(135deg, var(--blue-500) 0%, #2563eb 100%)';
+  }
+
+  // Update Dashboard Widget
+  document.getElementById('lp3m-w-status').textContent = pct + '%';
+  document.getElementById('lp3m-w-text').textContent = pct === 100 ? 'Semua evaluasi telah diselesaikan' : `${completed} dari ${data.length} evaluasi selesai`;
+  setTimeout(() => {
+    const wFill = document.getElementById('lp3m-w-fill');
+    if (wFill) wFill.style.width = pct + '%';
+  }, 500);
+}
+
 /* ----- Sub: MK Diambil ----- */
 function renderMKDiambil() {
   const mks = [
@@ -327,6 +688,162 @@ function renderMKDiambil() {
     html += `<div class="card reveal" style="padding:14px;margin-bottom:10px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span class="mk-code-pill">${m.code}</span><span style="font-family:Sora;font-size:14px;font-weight:600;color:var(--gray-800)">${m.name}</span></div><p style="font-size:12px;color:var(--gray-500)">${m.sks} SKS · ${m.dosen}</p><p style="font-size:12px;color:var(--gray-500);margin-top:2px">${m.jam} · ${m.ruang}</p></div>`;
   });
   c.innerHTML = html;
+}
+
+/* ----- Sub: Transkrip Nilai ----- */
+function renderTranskrip() {
+  const semesters = [
+    { sem: 'Sem 1', ips: 3.45, mks: [
+      { code: 'IF21101', name: 'Pengantar Informatika', sks: 3, grade: 'A-', bobot: 3.75 },
+      { code: 'IF21102', name: 'Kalkulus I', sks: 3, grade: 'B+', bobot: 3.25 },
+      { code: 'IF21103', name: 'Fisika Dasar', sks: 3, grade: 'B', bobot: 3.00 },
+      { code: 'IF21104', name: 'Bahasa Indonesia', sks: 2, grade: 'A', bobot: 4.00 },
+      { code: 'IF21105', name: 'Pancasila', sks: 2, grade: 'A-', bobot: 3.75 }
+    ]},
+    { sem: 'Sem 2', ips: 3.58, mks: [
+      { code: 'IF21201', name: 'Pemrograman Dasar', sks: 4, grade: 'A', bobot: 4.00 },
+      { code: 'IF21202', name: 'Kalkulus II', sks: 3, grade: 'B+', bobot: 3.25 },
+      { code: 'IF21203', name: 'Aljabar Linear', sks: 3, grade: 'B', bobot: 3.00 },
+      { code: 'IF21204', name: 'Bahasa Inggris', sks: 2, grade: 'A', bobot: 4.00 }
+    ]},
+    { sem: 'Sem 3', ips: 3.82, mks: [
+      { code: 'IF21301', name: 'Struktur Data', sks: 4, grade: 'A', bobot: 4.00 },
+      { code: 'IF21302', name: 'Sistem Digital', sks: 3, grade: 'A-', bobot: 3.75 },
+      { code: 'IF21303', name: 'Probabilitas & Statistik', sks: 3, grade: 'B+', bobot: 3.25 },
+      { code: 'IF21304', name: 'Etika Profesi', sks: 2, grade: 'A', bobot: 4.00 }
+    ]},
+    { sem: 'Sem 4', ips: 3.85, mks: [
+      { code: 'BD-301', name: 'Basis Data', sks: 3, grade: 'A', bobot: 4.00 },
+      { code: 'AP-401', name: 'Algoritma & Pemrograman', sks: 4, grade: 'A-', bobot: 3.75 },
+      { code: 'SO-302', name: 'Sistem Operasi', sks: 3, grade: 'B+', bobot: 3.25 },
+      { code: 'JK-201', name: 'Jaringan Komputer', sks: 3, grade: 'B', bobot: 3.00 },
+      { code: 'PW-401', name: 'Pemrograman Web', sks: 4, grade: 'A', bobot: 4.00 },
+      { code: 'MAT-201', name: 'Matematika Diskrit', sks: 3, grade: 'C+', bobot: 2.75 },
+      { code: 'APSI-302', name: 'Analisis Perancangan SI', sks: 2, grade: 'A-', bobot: 3.75 }
+    ]}
+  ];
+
+  // Simpan data untuk Canvas chart (digambar saat sub-page dibuka)
+  transkripData = semesters;
+
+  // Render grade list
+  const list = document.getElementById('transkrip-list');
+  if (!list) return;
+  let html = '';
+  let totalSKS = 0;
+  let totalMK = 0;
+
+  semesters.forEach(s => {
+    html += `<div style="padding:0 20px; margin-bottom:4px;"><h4 style="font-family:Sora; font-size:13px; font-weight:600; color:var(--gray-500); padding:12px 0 6px">${s.sem} · IPS ${s.ips.toFixed(2)}</h4></div>`;
+    s.mks.forEach((m, idx) => {
+      totalSKS += m.sks;
+      totalMK++;
+      const gc = gradeColor(m.grade);
+      html += `<div class="mk-card reveal" style="margin:0 20px 8px; transition-delay:${idx * 40}ms">`;
+      html += `<span class="mk-code-pill">${m.code}</span>`;
+      html += `<div class="mk-info"><h4>${m.name}</h4><p>${m.sks} SKS · Bobot ${m.bobot.toFixed(2)}</p></div>`;
+      html += `<span class="mk-grade ${gc}">${m.grade}</span>`;
+      html += `</div>`;
+    });
+  });
+  list.innerHTML = html;
+
+  const summary = document.getElementById('transkrip-summary');
+  if (summary) summary.textContent = `${totalMK} MK · ${totalSKS} SKS`;
+}
+
+function gradeColor(grade) {
+  if (grade.startsWith('A')) return 'grade-a';
+  if (grade.startsWith('B')) return 'grade-b';
+  if (grade.startsWith('C')) return 'grade-c';
+  return 'grade-d';
+}
+
+function drawIPSChart(semesters) {
+  const canvas = document.getElementById('ips-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  // High-DPI support
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width;
+  const H = rect.height;
+
+  const data = semesters.map(s => s.ips);
+  const labels = semesters.map(s => s.sem);
+  const padL = 36, padR = 20, padT = 20, padB = 30;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const minY = 2.0, maxY = 4.0;
+  const range = maxY - minY;
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+  ctx.lineWidth = 1;
+  for (let v = 2.0; v <= 4.0; v += 0.5) {
+    const y = padT + chartH - ((v - minY) / range) * chartH;
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(W - padR, y);
+    ctx.stroke();
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px DM Sans';
+    ctx.textAlign = 'right';
+    ctx.fillText(v.toFixed(1), padL - 6, y + 4);
+  }
+
+  // Data points
+  const points = data.map((v, i) => ({
+    x: padL + (i / (data.length - 1)) * chartW,
+    y: padT + chartH - ((v - minY) / range) * chartH
+  }));
+
+  // Gradient fill under line
+  const grad = ctx.createLinearGradient(0, padT, 0, H - padB);
+  grad.addColorStop(0, 'rgba(34,197,94,0.25)');
+  grad.addColorStop(1, 'rgba(34,197,94,0.02)');
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, H - padB);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(points[points.length - 1].x, H - padB);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#22c55e';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.stroke();
+
+  // Dots + labels
+  points.forEach((p, i) => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Value label
+    ctx.fillStyle = '#16a34a';
+    ctx.font = 'bold 11px Sora';
+    ctx.textAlign = 'center';
+    ctx.fillText(data[i].toFixed(2), p.x, p.y - 10);
+
+    // Semester label
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px DM Sans';
+    ctx.fillText(labels[i], p.x, H - padB + 16);
+  });
 }
 
 /* ----- Sub: Pembayaran ----- */
@@ -350,28 +867,100 @@ function renderPembayaran() {
    INITIALIZATION
    ============================================= */
 document.addEventListener('DOMContentLoaded', () => {
-  // Init scroll reveal observer
+  // Inisialisasi scroll reveal observer
   initRevealObserver();
 
-  // Render all content
+  // Render semua konten
   renderTasks();
   renderAnnouncements();
   renderServices();
+  renderLP3M();
   renderAkademik();
   renderJadwal();
   renderKehadiran();
   renderMKTersedia();
   renderMKDiambil();
   renderPembayaran();
+  renderTranskrip();
   updateGreeting();
 
-  // Initialize Theme
+  // Inisialisasi Tema
   initTheme();
 
-  // Initialize nav indicator position
+  // Inisialisasi posisi nav indicator
   setTimeout(updateNavIndicator, 100);
   window.addEventListener('resize', updateNavIndicator);
 
-  // Observe initial reveals
+  // Observe elemen reveal awal
   observeReveals();
+  
+  // Auto-show password tooltip as onboarding hint
+  setTimeout(() => showTooltip(), 500);
+
+  // Inisialisasi Onboarding
+  initOnboarding();
+
+  // Pasang ripple effect pada bottom nav items
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => createRipple(e, item));
+  });
 });
+
+/* ===== ONBOARDING (Phase 6) ===== */
+function initOnboarding() {
+  if (localStorage.getItem('firstTime') !== 'false') {
+    const navTooltip = document.getElementById('onboarding-nav');
+    if (navTooltip) {
+      setTimeout(() => navTooltip.classList.add('show'), 2000);
+      setTimeout(() => navTooltip.classList.remove('show'), 7000);
+      localStorage.setItem('firstTime', 'false');
+    }
+  }
+}
+
+/* ===== PULL TO REFRESH (Phase 6) ===== */
+let startY = 0;
+let currentY = 0;
+let isPulling = false;
+const spinner = document.getElementById('ptr-spinner');
+const appContainer = document.querySelector('.app-container');
+
+if (appContainer && spinner) {
+  appContainer.addEventListener('touchstart', e => {
+    if (appContainer.scrollTop === 0) {
+      startY = e.touches[0].clientY;
+      isPulling = true;
+    }
+  }, {passive: true});
+
+  appContainer.addEventListener('touchmove', e => {
+    if (!isPulling) return;
+    currentY = e.touches[0].clientY;
+    const dy = currentY - startY;
+    if (dy > 0 && appContainer.scrollTop === 0) {
+      if (dy > 40) {
+        spinner.classList.add('pulling');
+        spinner.style.transform = `translateX(-50%) translateY(${Math.min(dy - 40, 80)}px)`;
+      }
+    }
+  }, {passive: true});
+
+  appContainer.addEventListener('touchend', () => {
+    if (!isPulling) return;
+    isPulling = false;
+    const dy = currentY - startY;
+    if (dy > 100 && appContainer.scrollTop === 0) {
+      spinner.style.transform = '';
+      spinner.classList.remove('pulling');
+      spinner.classList.add('refreshing');
+      // Simulate API fetch delay
+      setTimeout(() => {
+        spinner.classList.remove('refreshing');
+        location.reload();
+      }, 1000);
+    } else {
+      spinner.style.transform = '';
+      spinner.classList.remove('pulling');
+    }
+  });
+}

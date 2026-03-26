@@ -1,0 +1,22 @@
+{
+  "name": "MY UPN Portal Mahasiswa",
+  "short_name": "MY UPN",
+  "description": "Portal terpadu untuk layanan akademik, SIAMIK, ILMU2, dan LP3M Universitas Pembangunan Nasional Veteran Jawa Timur.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#16a34a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/id/thumb/a/ab/Logo_UPN_Veteran_Jawa_Timur.png/600px-Logo_UPN_Veteran_Jawa_Timur.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/id/thumb/a/ab/Logo_UPN_Veteran_Jawa_Timur.png/600px-Logo_UPN_Veteran_Jawa_Timur.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
