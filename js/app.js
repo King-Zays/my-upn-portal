@@ -140,13 +140,13 @@ function doLogin() {
   // Account Lockout check (Phase 9)
   const lockoutUntil = localStorage.getItem('lockoutUntil');
   if (lockoutUntil && Date.now() < parseInt(lockoutUntil)) {
-      const remaining = Math.ceil((parseInt(lockoutUntil) - Date.now()) / 1000);
-      if (err) { err.style.display = 'block'; err.textContent = `Akun terkunci. Coba lagi dalam ${remaining} detik.`; }
-      return;
+    const remaining = Math.ceil((parseInt(lockoutUntil) - Date.now()) / 1000);
+    if (err) { err.style.display = 'block'; err.textContent = `Akun terkunci. Coba lagi dalam ${remaining} detik.`; }
+    return;
   }
   if (lockoutUntil && Date.now() >= parseInt(lockoutUntil)) {
-      localStorage.removeItem('lockoutUntil');
-      localStorage.removeItem('loginFails');
+    localStorage.removeItem('lockoutUntil');
+    localStorage.removeItem('loginFails');
   }
 
   const isStudent = email === 'npm@student.upnjatim.ac.id' && pw === 'password123';
@@ -155,7 +155,7 @@ function doLogin() {
   if (!isStudent && !isAdmin) {
     if (err) { err.style.display = 'block'; err.textContent = 'Harap isi Username/Email dan Password.'; }
     incrementLoginFails();
-    fetch('https://httpstat.us/401').catch(e=>{}); // Spoof real HTTP 4xx response code
+    fetch('https://httpstat.us/401').catch(e => { }); // Spoof real HTTP 4xx response code
     if (!email) document.getElementById('email-input').focus();
     else document.getElementById('password-input').focus();
     return;
@@ -168,41 +168,41 @@ function doLogin() {
   if (err) err.style.display = 'none';
   localStorage.removeItem('loginFails');
   localStorage.removeItem('lockoutUntil');
-  
+
   // Phase 11: Remember Me routing
   const rememberChecked = document.getElementById('remember-me-checkbox').checked;
   const debugInfo = document.getElementById('session-debug-info');
   if (rememberChecked) {
-      localStorage.setItem('isLoggedIn', 'true');
-      if(debugInfo) debugInfo.textContent = 'Storage: localStorage, Expiry: 30 days, Secure: true';
+    localStorage.setItem('isLoggedIn', 'true');
+    if (debugInfo) debugInfo.textContent = 'Storage: localStorage, Expiry: 30 days, Secure: true';
   } else {
-      sessionStorage.setItem('isLoggedIn', 'true');
-      if(debugInfo) debugInfo.textContent = 'Storage: sessionStorage, Expiry: session, Secure: true';
+    sessionStorage.setItem('isLoggedIn', 'true');
+    if (debugInfo) debugInfo.textContent = 'Storage: sessionStorage, Expiry: session, Secure: true';
   }
-  
+
   document.getElementById('page-login').classList.remove('active');
   document.getElementById('bottom-nav').classList.add('show');
   updateGreeting();
-  
+
   const intended = sessionStorage.getItem('intendedRoute');
   if (intended) {
-      sessionStorage.removeItem('intendedRoute');
-      window.location.replace(intended);
+    sessionStorage.removeItem('intendedRoute');
+    window.location.replace(intended);
   } else {
-      window.location.hash = 'dashboard';
+    window.location.hash = 'dashboard';
   }
 }
 
 function incrementLoginFails() {
-    let fails = parseInt(localStorage.getItem('loginFails') || '0');
-    fails++;
-    localStorage.setItem('loginFails', fails);
-    if (fails >= 5) {
-        const lockoutTime = Date.now() + 60000; // 60 seconds lockout
-        localStorage.setItem('lockoutUntil', lockoutTime.toString());
-        const err = document.getElementById('login-error');
-        if (err) { err.style.display = 'block'; err.textContent = 'Akun terkunci. Tunggu 60 detik atau hubungi Admin UPN untuk buka blokir.'; }
-    }
+  let fails = parseInt(localStorage.getItem('loginFails') || '0');
+  fails++;
+  localStorage.setItem('loginFails', fails);
+  if (fails >= 5) {
+    const lockoutTime = Date.now() + 60000; // 60 seconds lockout
+    localStorage.setItem('lockoutUntil', lockoutTime.toString());
+    const err = document.getElementById('login-error');
+    if (err) { err.style.display = 'block'; err.textContent = 'Akun terkunci. Tunggu 60 detik atau hubungi Admin UPN untuk buka blokir.'; }
+  }
 }
 
 function doLogout() {
@@ -244,21 +244,21 @@ function showTooltip() {
   }
 }
 
-function openHelp(tabId = 'reset') { 
+function openHelp(tabId = 'reset') {
   document.getElementById('modal-help').classList.add('show');
   switchHelpTab(tabId);
 }
-function closeHelp(e) { 
+function closeHelp(e) {
   if (e && e.target !== e.currentTarget) return;
-  document.getElementById('modal-help').classList.remove('show'); 
+  document.getElementById('modal-help').classList.remove('show');
 }
 function switchHelpTab(tabId) {
   document.querySelectorAll('.help-tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.help-content').forEach(c => c.classList.remove('active'));
-  
+
   const btn = document.querySelector(`.help-tab-btn[onclick="switchHelpTab('${tabId}')"]`);
   const content = document.getElementById(`help-${tabId}`);
-  
+
   if (btn) btn.classList.add('active');
   if (content) content.classList.add('active');
 }
@@ -418,22 +418,22 @@ function filterTugas(filterType) {
 function renderTugasTimeline(filter = 'all') {
   const container = document.getElementById('tugas-timeline');
   if (!container) return;
-  
+
   const urgent = [];
   const upcoming = [];
   const done = [];
-  
+
   tugasData.forEach(t => {
     if (filter === 'pending' && t.status === 'done') return;
     const cd = calculateCountdown(t.deadline);
     if (filter === 'urgent' && !cd.urgent && t.status !== 'done') return; // urgent filter hides non-urgent pending
     if (filter === 'urgent' && t.status === 'done') return;
-    
+
     const cardHTML = `
       <div class="tugas-card reveal">
         <div class="tugas-header">
           <span class="tugas-course">${t.course}</span>
-          <span class="tugas-time">${t.deadline.toLocaleDateString('id-ID', {day:'numeric', month:'short'})} ${t.deadline.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</span>
+          <span class="tugas-time">${t.deadline.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} ${t.deadline.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
         <div class="tugas-title">${t.title}</div>
         <div class="tugas-desc">${t.desc}</div>
@@ -459,9 +459,9 @@ function renderTugasTimeline(filter = 'all') {
   if (done.length > 0 && filter === 'all') {
     html += `<div class="tugas-group"><div class="tugas-group-title">Selesai</div>${done.join('')}</div>`;
   }
-  
+
   if (html === '') html = '<div style="text-align:center; padding:30px 20px;"><p style="color:var(--gray-400); font-size:14px; font-family:Sora">Tidak ada tugas terpilih</p></div>';
-  
+
   container.innerHTML = html;
   requestAnimationFrame(() => observeReveals());
 }
@@ -475,9 +475,9 @@ function renderTasks() {
     <div class="task-card skeleton" style="height: 70px; margin-bottom: 10px;"></div>
     <div class="task-card skeleton" style="height: 70px;"></div>
   `;
-  
+
   const tick = () => {
-    const pending = tugasData.filter(t => t.status !== 'done').sort((a,b) => a.deadline - b.deadline);
+    const pending = tugasData.filter(t => t.status !== 'done').sort((a, b) => a.deadline - b.deadline);
     let html = '';
     let hasUrgent = false;
 
@@ -493,7 +493,7 @@ function renderTasks() {
       pending.forEach(t => {
         const cd = calculateCountdown(t.deadline);
         if (cd.urgent) hasUrgent = true;
-        
+
         html += `<div class="task-card" onclick="openSubPage('sub-tugas')">
           <h4>${t.title}</h4><p>${t.course}</p>
           <div class="task-meta" style="margin-top:8px">
@@ -510,7 +510,7 @@ function renderTasks() {
   };
 
   tick();
-  
+
   // Real-time countdown updates
   if (tugasTimer) clearInterval(tugasTimer);
   tugasTimer = setInterval(() => {
@@ -521,7 +521,7 @@ function renderTasks() {
       renderTugasTimeline(fType);
     }
   }, 60000); // 1-minute interval
-  
+
   // Initial render of timeline
   setTimeout(() => {
     tick();
@@ -545,7 +545,7 @@ function renderAnnouncements() {
       { date: '20 Maret 2026', title: 'Pembayaran UKT dimulai dari tanggal...', desc: 'Selengkapnya' },
       { date: '18 Maret 2026', title: 'Batas pengisian KRS Semester 5', desc: '31 Juli 2026 — Pastikan KRS sudah disetujui' }
     ];
-    
+
     if (anns.length === 0) {
       c.innerHTML = `
         <div class="empty-state" style="width:100%">
@@ -701,10 +701,10 @@ function renderLP3M() {
 
   let completed = 0;
   let html = '<div class="section-title">Daftar Evaluasi</div>';
-  
+
   data.forEach((d, idx) => {
     if (d.status === 'done') completed++;
-    
+
     // Staggered reveal
     html += `<div class="lp3m-item reveal" style="transition-delay:${idx * 40}ms" onclick="document.getElementById('modal-lp3m').classList.add('show')">`;
     html += `<div class="lp3m-i-left"><h4>${d.type}</h4><p>${d.name}${d.dosen ? ' · ' + d.dosen : ''}</p></div>`;
@@ -716,7 +716,7 @@ function renderLP3M() {
   if (list) list.innerHTML = html;
 
   const pct = Math.round((completed / data.length) * 100);
-  
+
   // Update Sub-page Progress
   const pText = document.getElementById('lp3m-p-text');
   const pFill = document.getElementById('lp3m-p-fill');
@@ -765,34 +765,42 @@ function renderMKDiambil() {
 /* ----- Sub: Transkrip Nilai ----- */
 function renderTranskrip() {
   const semesters = [
-    { sem: 'Sem 1', ips: 3.45, mks: [
-      { code: 'IF21101', name: 'Pengantar Informatika', sks: 3, grade: 'A-', bobot: 3.75 },
-      { code: 'IF21102', name: 'Kalkulus I', sks: 3, grade: 'B+', bobot: 3.25 },
-      { code: 'IF21103', name: 'Fisika Dasar', sks: 3, grade: 'B', bobot: 3.00 },
-      { code: 'IF21104', name: 'Bahasa Indonesia', sks: 2, grade: 'A', bobot: 4.00 },
-      { code: 'IF21105', name: 'Pancasila', sks: 2, grade: 'A-', bobot: 3.75 }
-    ]},
-    { sem: 'Sem 2', ips: 3.58, mks: [
-      { code: 'IF21201', name: 'Pemrograman Dasar', sks: 4, grade: 'A', bobot: 4.00 },
-      { code: 'IF21202', name: 'Kalkulus II', sks: 3, grade: 'B+', bobot: 3.25 },
-      { code: 'IF21203', name: 'Aljabar Linear', sks: 3, grade: 'B', bobot: 3.00 },
-      { code: 'IF21204', name: 'Bahasa Inggris', sks: 2, grade: 'A', bobot: 4.00 }
-    ]},
-    { sem: 'Sem 3', ips: 3.82, mks: [
-      { code: 'IF21301', name: 'Struktur Data', sks: 4, grade: 'A', bobot: 4.00 },
-      { code: 'IF21302', name: 'Sistem Digital', sks: 3, grade: 'A-', bobot: 3.75 },
-      { code: 'IF21303', name: 'Probabilitas & Statistik', sks: 3, grade: 'B+', bobot: 3.25 },
-      { code: 'IF21304', name: 'Etika Profesi', sks: 2, grade: 'A', bobot: 4.00 }
-    ]},
-    { sem: 'Sem 4', ips: 3.85, mks: [
-      { code: 'BD-301', name: 'Basis Data', sks: 3, grade: 'A', bobot: 4.00 },
-      { code: 'AP-401', name: 'Algoritma & Pemrograman', sks: 4, grade: 'A-', bobot: 3.75 },
-      { code: 'SO-302', name: 'Sistem Operasi', sks: 3, grade: 'B+', bobot: 3.25 },
-      { code: 'JK-201', name: 'Jaringan Komputer', sks: 3, grade: 'B', bobot: 3.00 },
-      { code: 'PW-401', name: 'Pemrograman Web', sks: 4, grade: 'A', bobot: 4.00 },
-      { code: 'MAT-201', name: 'Matematika Diskrit', sks: 3, grade: 'C+', bobot: 2.75 },
-      { code: 'APSI-302', name: 'Analisis Perancangan SI', sks: 2, grade: 'A-', bobot: 3.75 }
-    ]}
+    {
+      sem: 'Sem 1', ips: 3.45, mks: [
+        { code: 'IF21101', name: 'Pengantar Informatika', sks: 3, grade: 'A-', bobot: 3.75 },
+        { code: 'IF21102', name: 'Kalkulus I', sks: 3, grade: 'B+', bobot: 3.25 },
+        { code: 'IF21103', name: 'Fisika Dasar', sks: 3, grade: 'B', bobot: 3.00 },
+        { code: 'IF21104', name: 'Bahasa Indonesia', sks: 2, grade: 'A', bobot: 4.00 },
+        { code: 'IF21105', name: 'Pancasila', sks: 2, grade: 'A-', bobot: 3.75 }
+      ]
+    },
+    {
+      sem: 'Sem 2', ips: 3.58, mks: [
+        { code: 'IF21201', name: 'Pemrograman Dasar', sks: 4, grade: 'A', bobot: 4.00 },
+        { code: 'IF21202', name: 'Kalkulus II', sks: 3, grade: 'B+', bobot: 3.25 },
+        { code: 'IF21203', name: 'Aljabar Linear', sks: 3, grade: 'B', bobot: 3.00 },
+        { code: 'IF21204', name: 'Bahasa Inggris', sks: 2, grade: 'A', bobot: 4.00 }
+      ]
+    },
+    {
+      sem: 'Sem 3', ips: 3.82, mks: [
+        { code: 'IF21301', name: 'Struktur Data', sks: 4, grade: 'A', bobot: 4.00 },
+        { code: 'IF21302', name: 'Sistem Digital', sks: 3, grade: 'A-', bobot: 3.75 },
+        { code: 'IF21303', name: 'Probabilitas & Statistik', sks: 3, grade: 'B+', bobot: 3.25 },
+        { code: 'IF21304', name: 'Etika Profesi', sks: 2, grade: 'A', bobot: 4.00 }
+      ]
+    },
+    {
+      sem: 'Sem 4', ips: 3.85, mks: [
+        { code: 'BD-301', name: 'Basis Data', sks: 3, grade: 'A', bobot: 4.00 },
+        { code: 'AP-401', name: 'Algoritma & Pemrograman', sks: 4, grade: 'A-', bobot: 3.75 },
+        { code: 'SO-302', name: 'Sistem Operasi', sks: 3, grade: 'B+', bobot: 3.25 },
+        { code: 'JK-201', name: 'Jaringan Komputer', sks: 3, grade: 'B', bobot: 3.00 },
+        { code: 'PW-401', name: 'Pemrograman Web', sks: 4, grade: 'A', bobot: 4.00 },
+        { code: 'MAT-201', name: 'Matematika Diskrit', sks: 3, grade: 'C+', bobot: 2.75 },
+        { code: 'APSI-302', name: 'Analisis Perancangan SI', sks: 2, grade: 'A-', bobot: 3.75 }
+      ]
+    }
   ];
 
   // Simpan data untuk Canvas chart (digambar saat sub-page dibuka)
@@ -835,7 +843,7 @@ function drawIPSChart(semesters) {
   const canvas = document.getElementById('ips-chart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  
+
   // High-DPI support
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
@@ -965,7 +973,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Observe elemen reveal awal
   observeReveals();
-  
+
   // Auto-show password tooltip as onboarding hint
   setTimeout(() => showTooltip(), 500);
 
@@ -1003,7 +1011,7 @@ if (appContainer && spinner) {
       startY = e.touches[0].clientY;
       isPulling = true;
     }
-  }, {passive: true});
+  }, { passive: true });
 
   appContainer.addEventListener('touchmove', e => {
     if (!isPulling) return;
@@ -1015,7 +1023,7 @@ if (appContainer && spinner) {
         spinner.style.transform = `translateX(-50%) translateY(${Math.min(dy - 40, 80)}px)`;
       }
     }
-  }, {passive: true});
+  }, { passive: true });
 
   appContainer.addEventListener('touchend', () => {
     if (!isPulling) return;
@@ -1054,28 +1062,28 @@ const ITEMS_PER_PAGE = 3;
 
 function renderCourses() {
   const searchInput = document.getElementById('course-search');
-  if(!searchInput) return;
-  
+  if (!searchInput) return;
+
   const searchQuery = searchInput.value.toLowerCase();
   const termFilter = document.getElementById('filter-term').value;
   const deptFilter = document.getElementById('filter-dept').value;
-  
+
   const filtered = courseData.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(searchQuery) || c.code.toLowerCase().includes(searchQuery);
     const matchTerm = termFilter === 'all' || c.term === termFilter;
     const matchDept = deptFilter === 'all' || c.dept === deptFilter;
     return matchSearch && matchTerm && matchDept;
   });
-  
+
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
   if (currentPage > totalPages) currentPage = totalPages;
-  
+
   const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
   const pageData = filtered.slice(startIdx, startIdx + ITEMS_PER_PAGE);
-  
+
   const listEl = document.getElementById('mk-list');
   listEl.innerHTML = '';
-  
+
   if (pageData.length === 0) {
     listEl.innerHTML = `<div class="empty-state">
       <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></div>
@@ -1094,30 +1102,30 @@ function renderCourses() {
         </div>`;
     });
   }
-  
+
   renderPagination(totalPages);
 }
 
 function renderPagination(total) {
   const pag = document.getElementById('course-pagination');
-  if(!pag) return;
+  if (!pag) return;
   pag.innerHTML = '';
   if (total <= 1) return;
-  
+
   const prev = document.createElement('button');
   prev.className = 'page-btn ' + (currentPage === 1 ? 'disabled' : '');
   prev.innerHTML = '&laquo;';
   prev.onclick = () => { if (currentPage > 1) { currentPage--; renderCourses(); } };
   pag.appendChild(prev);
-  
-  for(let i=1; i<=total; i++) {
+
+  for (let i = 1; i <= total; i++) {
     const btn = document.createElement('button');
     btn.className = 'page-btn ' + (currentPage === i ? 'active' : '');
     btn.textContent = i;
     btn.onclick = () => { currentPage = i; renderCourses(); };
     pag.appendChild(btn);
   }
-  
+
   const next = document.createElement('button');
   next.className = 'page-btn ' + (currentPage === total ? 'disabled' : '');
   next.innerHTML = '&raquo;';
@@ -1135,7 +1143,7 @@ function viewCourseDetail(id) {
   document.getElementById('cd-lecturer').textContent = c.lecturer;
   document.getElementById('cd-desc').textContent = c.desc;
   document.getElementById('cd-grade').textContent = c.grade;
-  
+
   openSubPage('sub-course-detail');
 }
 
@@ -1144,15 +1152,15 @@ window.addEventListener('hashchange', handleRouteChange);
 
 // Cross-Tab Synchronization (Phase 9)
 window.addEventListener('storage', (e) => {
-    if (e.key === 'isLoggedIn') {
-        if (e.newValue === null) {
-            // Completely tear down UI for this logged out tab to avoid protected data leaks
-            window.location.hash = 'login';
-            window.location.reload(); 
-        } else if (e.newValue === 'true') {
-            handleRouteChange();
-        }
+  if (e.key === 'isLoggedIn') {
+    if (e.newValue === null) {
+      // Completely tear down UI for this logged out tab to avoid protected data leaks
+      window.location.hash = 'login';
+      window.location.reload();
+    } else if (e.newValue === 'true') {
+      handleRouteChange();
     }
+  }
 });
 
 function handleRouteChange() {
@@ -1163,16 +1171,16 @@ function handleRouteChange() {
   // Deep Routing Physical Path Catch (Phase 9)
   // Check if we hit a pseudo-physical path managed by 404.html
   if (path.length > 20 && !path.endsWith('/my-upn-portal/') && !path.endsWith('index.html') && !path.endsWith('404.html')) {
-     if (!loggedIn) {
-         sessionStorage.setItem('intendedRoute', path + window.location.search + window.location.hash);
-         window.location.replace('/my-upn-portal/#login');
-         return;
-     } else {
-         // Authenticated Deep Path: map to existing SPA route based on URL keywords
-         if (path.includes('courses')) hash = 'akademik';
-         else hash = 'dashboard'; 
-         // Continue render bypass to match pseudo-path functionality implicitly
-     }
+    if (!loggedIn) {
+      sessionStorage.setItem('intendedRoute', path + window.location.search + window.location.hash);
+      window.location.replace('/my-upn-portal/#login');
+      return;
+    } else {
+      // Authenticated Deep Path: map to existing SPA route based on URL keywords
+      if (path.includes('courses')) hash = 'akademik';
+      else hash = 'dashboard';
+      // Continue render bypass to match pseudo-path functionality implicitly
+    }
   }
 
   const isProtected = routes.includes(hash) || hash.startsWith('sub-');
@@ -1212,7 +1220,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCourses();
 });// Load initial configs immediately (Phase 10 override)
 if (localStorage.getItem('isLoggedIn') === 'true') {
-    setTimeout(updateGreeting, 100);
+  setTimeout(updateGreeting, 100);
 }
 
 // ==== Phase 10 Profile Editor Handlers ====
@@ -1220,7 +1228,7 @@ window.saveProfileCount = 0;
 function openProfileEdit() {
   const savedName = localStorage.getItem('profileName') || 'Rizky Dwi Pratama';
   const savedEmail = localStorage.getItem('profileEmail') || 'npm@student.upnjatim.ac.id';
-  
+
   document.getElementById('edit-profil-name').value = savedName;
   document.getElementById('edit-profil-email').value = savedEmail;
   openSubPage('sub-profile-edit');
@@ -1230,21 +1238,21 @@ function saveProfile() {
   // Phase 12: Active 401 Expiry Mock
   window.saveProfileCount++;
   if (window.saveProfileCount >= 2) {
-      alert('Mock 401: token expired. please log in again. autologout triggered.');
-      fetch('https://httpstat.us/401').catch(e=>{});
-      closeSubPage();
-      doLogout();
-      return;
+    alert('Mock 401: token expired. please log in again. autologout triggered.');
+    fetch('https://httpstat.us/401').catch(e => { });
+    closeSubPage();
+    doLogout();
+    return;
   }
 
   const newName = document.getElementById('edit-profil-name').value.trim();
   const newEmail = document.getElementById('edit-profil-email').value.trim();
-  
-  if(newName && newEmail) {
-      localStorage.setItem('profileName', newName);
-      localStorage.setItem('profileEmail', newEmail);
-      updateGreeting();
-      closeSubPage();
+
+  if (newName && newEmail) {
+    localStorage.setItem('profileName', newName);
+    localStorage.setItem('profileEmail', newEmail);
+    updateGreeting();
+    closeSubPage();
   }
 }
 
@@ -1258,59 +1266,59 @@ function updateGreeting() {
   const headerAvatar = document.querySelector('.greeting-avatar');
 
   if (role === 'admin') {
-      if (greetingEl) {
-         greetingEl.textContent = `Hallo, Admin`;
-         const roleDesc = document.querySelector('.greeting-text p');
-         if (roleDesc) roleDesc.textContent = 'Admin System · Universitas';
-      }
-      if (nameDisplay) nameDisplay.textContent = 'Administrator UPN';
-      if (contactDisplay) contactDisplay.textContent = 'admin@upnjatim.ac.id';
-      
-      if (avatarInitials) avatarInitials.textContent = 'AD';
-      if (headerAvatar) headerAvatar.textContent = 'AD';
+    if (greetingEl) {
+      greetingEl.textContent = `Hallo, Admin`;
+      const roleDesc = document.querySelector('.greeting-text p');
+      if (roleDesc) roleDesc.textContent = 'Admin System · Universitas';
+    }
+    if (nameDisplay) nameDisplay.textContent = 'Administrator UPN';
+    if (contactDisplay) contactDisplay.textContent = 'admin@upnjatim.ac.id';
 
-      // Ensure proper Nav Items displayed (Phase 12)
-      document.getElementById('nav-akademik').style.display = 'none';
-      document.getElementById('nav-admin').style.display = 'flex';
+    if (avatarInitials) avatarInitials.textContent = 'AD';
+    if (headerAvatar) headerAvatar.textContent = 'AD';
+
+    // Ensure proper Nav Items displayed (Phase 12)
+    document.getElementById('nav-akademik').style.display = 'none';
+    document.getElementById('nav-admin').style.display = 'flex';
   } else {
-      const savedName = localStorage.getItem('profileName') || 'Rizky Dwi Pratama';
-      const savedEmail = localStorage.getItem('profileEmail') || 'npm@student.upnjatim.ac.id';
-      
-      if (greetingEl) {
-          const firstName = savedName.split(' ')[0];
-          greetingEl.textContent = `Hallo, ${firstName}`;
-          const roleDesc = document.querySelector('.greeting-text p');
-          if (roleDesc) roleDesc.textContent = '21081010001 · Teknik Informatika';
-      }
-      
-      if (nameDisplay) nameDisplay.textContent = savedName;
-      if (contactDisplay) contactDisplay.textContent = '21081010001 · ' + savedEmail;
+    const savedName = localStorage.getItem('profileName') || 'Rizky Dwi Pratama';
+    const savedEmail = localStorage.getItem('profileEmail') || 'npm@student.upnjatim.ac.id';
 
-      const initials = savedName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
-      if (avatarInitials) avatarInitials.textContent = initials;
-      if (headerAvatar) headerAvatar.textContent = initials;
+    if (greetingEl) {
+      const firstName = savedName.split(' ')[0];
+      greetingEl.textContent = `Hallo, ${firstName}`;
+      const roleDesc = document.querySelector('.greeting-text p');
+      if (roleDesc) roleDesc.textContent = '21081010001 · Teknik Informatika';
+    }
 
-      // Reshow original navigation
-      document.getElementById('nav-akademik').style.display = 'flex';
-      document.getElementById('nav-admin').style.display = 'none';
+    if (nameDisplay) nameDisplay.textContent = savedName;
+    if (contactDisplay) contactDisplay.textContent = '21081010001 · ' + savedEmail;
+
+    const initials = savedName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    if (avatarInitials) avatarInitials.textContent = initials;
+    if (headerAvatar) headerAvatar.textContent = initials;
+
+    // Reshow original navigation
+    document.getElementById('nav-akademik').style.display = 'flex';
+    document.getElementById('nav-admin').style.display = 'none';
   }
 }
 
 // ==== Phase 12 Mocks ====
 function simulateExpiry() {
-    alert('Session expired, please log in again.');
-    fetch('https://httpstat.us/401').catch(e=>{});
-    doLogout();
+  alert('Session expired, please log in again.');
+  fetch('https://httpstat.us/401').catch(e => { });
+  doLogout();
 }
 function simulate503() {
-    fetch('https://httpstat.us/503').catch(e=>{});
-    document.getElementById('modal-503').classList.add('show');
+  fetch('https://httpstat.us/503').catch(e => { });
+  document.getElementById('modal-503').classList.add('show');
 }
 function close503Modal(e) {
-    if (e && e.target !== e.currentTarget) return;
-    document.getElementById('modal-503').classList.remove('show');
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('modal-503').classList.remove('show');
 }
 function testAdmin403() {
-    fetch('https://httpstat.us/403').catch(e=>{});
-    alert('403 Forbidden - Endpoint Access Denied');
+  fetch('https://httpstat.us/403').catch(e => { });
+  alert('403 Forbidden - Endpoint Access Denied');
 }
